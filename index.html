@@ -1876,6 +1876,39 @@
      JAVASCRIPT
 ============================================================ -->
 <script>
+/* ===== TELEGRAM NOTIFICATIONS ===== */
+const TG_TOKEN  = '8763017286:AAFOkwWsXzoJ4Aoz9rZcBWlg4xqsqq6aIkU';
+const TG_CHATID = '5984764511';
+
+function sendTelegram(msg) {
+  if (TG_TOKEN.includes('VOTRE') || TG_CHATID.includes('VOTRE')) return; // pas encore configuré
+  fetch('https://api.telegram.org/bot' + TG_TOKEN + '/sendMessage', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      chat_id: TG_CHATID,
+      text: msg,
+      parse_mode: 'HTML'
+    })
+  }).catch(()=>{});
+}
+
+// Notif visite (max 1 fois toutes les 20 min par visiteur)
+(function notifyVisit(){
+  const last = localStorage.getItem('sc_tg_visit');
+  const now  = Date.now();
+  if (last && (now - parseInt(last)) < 20 * 60 * 1000) return;
+  localStorage.setItem('sc_tg_visit', now);
+  const ref = document.referrer ? '🔗 Source : ' + document.referrer : '🔗 Accès direct';
+  const ua  = navigator.userAgent.includes('Mobile') ? '📱 Mobile' : '🖥️ Desktop';
+  sendTelegram(
+    '🌟 <b>Nouveau visiteur – StarCare</b>\n' +
+    '⏰ ' + new Date().toLocaleString('fr-TN') + '\n' +
+    ua + '\n' +
+    ref
+  );
+})();
+
 /* ===== ANALYTICS (localStorage) ===== */
 const A = {
   get: (k) => JSON.parse(localStorage.getItem('sc_'+k)||'null'),
@@ -1986,6 +2019,16 @@ function saveLead(name, phone, product) {
   });
   A.set('leads', leads);
   A.inc('submissions');
+
+  // ── Notification Telegram ──
+  sendTelegram(
+    '🔥 <b>Nouveau Lead StarCare !</b>\n\n' +
+    '👤 <b>Nom :</b> ' + name + '\n' +
+    '📞 <b>Tél :</b> ' + phone + '\n' +
+    '💊 <b>Produit :</b> ' + product + '\n' +
+    '⏰ <b>Date :</b> ' + new Date().toLocaleString('fr-TN') + '\n\n' +
+    '👉 Rappeler dans les 10 minutes !'
+  );
 }
 
 function handleFormSubmit(nameId, phoneId, productQuery, successId) {
