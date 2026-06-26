@@ -2005,31 +2005,35 @@ const TG_TOKEN  = '8763017286:AAFOkwWsXzoJ4Aoz9rZcBWlg4xqsqq6aIkU';
 const TG_CHATID = '5984764511';
 
 function sendTelegram(msg) {
-  if (TG_TOKEN.includes('VOTRE') || TG_CHATID.includes('VOTRE')) return; // pas encore configuré
-  fetch('https://api.telegram.org/bot' + TG_TOKEN + '/sendMessage', {
+  const url = 'https://api.telegram.org/bot' + TG_TOKEN + '/sendMessage';
+  // Méthode 1 : fetch
+  fetch(url, {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({
-      chat_id: TG_CHATID,
-      text: msg,
-      parse_mode: 'HTML'
-    })
-  }).catch(()=>{});
+    body: JSON.stringify({ chat_id: TG_CHATID, text: msg, parse_mode: 'HTML' })
+  }).catch(function() {
+    // Méthode 2 fallback : sendBeacon (fonctionne même si fetch bloqué)
+    const blob = new Blob(
+      [JSON.stringify({ chat_id: TG_CHATID, text: msg, parse_mode: 'HTML' })],
+      {type:'application/json'}
+    );
+    navigator.sendBeacon && navigator.sendBeacon(url, blob);
+  });
 }
 
-// Notif visite (max 1 fois toutes les 20 min par visiteur)
+// Notif visite — 1 fois par session (sessionStorage se réinitialise à chaque fermeture du navigateur)
 (function notifyVisit(){
-  const last = localStorage.getItem('sc_tg_visit');
-  const now  = Date.now();
-  if (last && (now - parseInt(last)) < 20 * 60 * 1000) return;
-  localStorage.setItem('sc_tg_visit', now);
-  const ref = document.referrer ? '🔗 Source : ' + document.referrer : '🔗 Accès direct';
-  const ua  = navigator.userAgent.includes('Mobile') ? '📱 Mobile' : '🖥️ Desktop';
+  if (sessionStorage.getItem('sc_notified')) return;
+  sessionStorage.setItem('sc_notified', '1');
+  const ref = document.referrer ? document.referrer.replace(/https?:\/\//,'') : 'Accès direct';
+  const ua  = /Mobile|Android|iPhone|iPad/i.test(navigator.userAgent) ? 'Mobile' : 'Desktop';
+  const lang = navigator.language || 'inconnu';
   sendTelegram(
-    '🌟 <b>Nouveau visiteur – StarCare</b>\n' +
+    '👁 <b>Nouveau visiteur – starcare-shiri.vercel.app</b>\n' +
     '⏰ ' + new Date().toLocaleString('fr-TN') + '\n' +
-    ua + '\n' +
-    ref
+    '📱 Appareil : ' + ua + '\n' +
+    '🌐 Langue : ' + lang + '\n' +
+    '🔗 Source : ' + ref
   );
 })();
 
